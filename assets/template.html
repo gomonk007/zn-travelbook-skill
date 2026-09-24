@@ -1,0 +1,838 @@
+<!DOCTYPE html>
+<!--
+  ══════════════════════════════════════════════════════════════════════
+  一次性旅行攻略 · HTML 骨架模板（skill 自带资产）
+
+  用法（三步，不要再自己设计 CSS）：
+    1. 复制本文件为本次交付物，把 {花括号} 占位内容替换成本次行程内容；
+    2. 排版全部锁定，不要改字号 / 颜色 / 框线 / 圆角；
+    3. 封面：把 __COVER_B64__ 替换成 data:image/jpeg;base64,... （见 references/cover-image.md）。
+
+  为什么要有这个模板：
+    排版是"定死的资产"，不是每次要重新设计的部分。每次重写 CSS 会引出反复截图调排版、
+    把时间耗在验证上。套模板 = 排版零风险 = 不用验证排版。
+
+  结构铁律（不要改）：
+    · 顶层目录恰好 5 项：行程总览 / 景点 / 每日行程 / 必读指南 / 行程全貌
+    · 模块顺序：封面 → 行程总览 → 景点 → 每日行程 → 必读指南 → 行程全貌
+      （每日行程排在必读指南**之前** —— 先给安排，再集中交代约束）
+    · 景点：必去 / 值得 / 可选三组**都进两列网格**；小红书两个标签在**卡外下方**并排
+    · 每日行程：每天一块「内嵌路线图」位置（L3 · 有 Key 才有图，没有就整块删）
+    · 必读指南：按关键要素分五组，**两栏瀑布流（masonry）**，每组顶部一张分类图（图向下渐淡）；
+      · 每条标题前一个 8px 点：hard（必读）暗红 / soft（提示）暗黄 —— **不用文字徽标**
+      · `hard` 直接列出、`soft` 收进 details，**details 一律默认收起（无例外）**
+    · 行程全貌：**只有脑图 + 游玩要点，没有地图**（地图在每日行程）
+    · 交付物里不得出现任何 data-page-node-id 之类的编辑痕迹属性
+
+  风格与规则依据：references/design-system.md
+  ══════════════════════════════════════════════════════════════════════
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{城市} · {主题}｜{N}天{M}晚攻略</title>
+<style>
+/* ═══ 1. 设计令牌（锁定区） ═══════════════════════════════ */
+:root{
+  /* 纸与墨（中性层） */
+  --paper:#f2efe7; --paper-alt:#fbfaf5; --card:#ffffff;
+  --ink:#1b2a21; --ink-2:#26382d;
+  --text:#26332b; --text-soft:#4a594f; --muted:#6d7b72;
+  /* 主色：青绿 · 只用于「可点 / 当前 / 主行动」 */
+  --jade:#2f7d5c; --jade-deep:#21573e; --jade-soft:#e4efe8;
+  /* 辅色：赭金 · 只用于「数字 / 标题装饰」 */
+  --gold:#a8791f; --gold-soft:#f8f0dd;
+  /* ★ 框线：必须看得见。浅于此值的边框一律禁止 */
+  --line:#b6c4ba; --line-hair:#d5ded8;
+  /* 警示：只用于「必读」暗红点 */
+  --alert:#b3261e; --alert-soft:#fceceb;
+  /* ★ 必读指南五组（语义色，一套颜色只背一个语义） */
+  --g-spot:#2F5D7E; --g-food:#B5502A; --g-hotel:#6B4A73;
+  --g-trans:#3A6E78; --g-photo:#A83A5C;
+  --xhs:#ff2442;
+  /* ★★ 字号阶梯（9 档 · 全篇唯一入口；任何地方都不许再写裸 font-size 数值）
+     cap 封面主标 > sec 章节标题 > sub 小节标题 > title 卡片标题
+     > lead 强调正文 > body 正文（基准） > note 次要说明 > label 标签/元信息 > mini 图内文字 */
+  --fs-cap:  clamp(34px,6.4vw,54px);
+  --fs-sec:  clamp(25px,3.3vw,31px);
+  --fs-sub:  22px;
+  --fs-title:20px;
+  --fs-lead: 18px;
+  --fs-body: 17px;
+  --fs-note: 15.5px;
+  --fs-label:14px;
+  --fs-mini: 13px;
+  --r-s:8px; --r-m:14px; --r-l:20px; --r-pill:999px;
+  --sh:0 6px 20px rgba(27,42,33,.07);
+  --sh-lift:0 14px 34px rgba(27,42,33,.13);
+  --sh-hover:0 18px 40px rgba(27,42,33,.15);
+  --ease:cubic-bezier(.22,.61,.36,1);
+  --serif:"Songti SC","Source Han Serif SC","Noto Serif SC",Georgia,serif;
+  --sans:system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;
+}
+
+/* ═══ 2. 基础 ══════════════════════════════════════════ */
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{font-family:var(--sans);font-size:var(--fs-body);line-height:1.8;color:var(--text);
+  background:var(--paper);-webkit-font-smoothing:antialiased}
+img{display:block;max-width:100%}
+a{color:var(--jade-deep)}
+::selection{background:var(--jade);color:#fff}
+h1,h2,h3,h4{line-height:1.32;color:var(--ink);font-weight:700}
+ul{list-style:none}
+
+/* ═══ 3. 骨架：左目录 + 右内容 ═══════════════════════════ */
+.app{display:flex;align-items:flex-start;max-width:1180px;margin:0 auto;gap:32px;padding:0 24px}
+.content{flex:1;min-width:0;padding:28px 0 72px}
+
+.sidebar{position:sticky;top:0;flex:none;width:238px;padding:28px 0;max-height:100vh}
+.brandmark{display:flex;gap:10px;align-items:flex-start;padding:0 4px 18px;
+  border-bottom:2px solid var(--jade);margin-bottom:16px}
+.branddot{flex:none;width:10px;height:10px;border-radius:3px;background:var(--gold);margin-top:9px}
+.brandname{display:block;font-family:var(--serif);font-size:var(--fs-lead);font-weight:700;color:var(--ink);line-height:1.4}
+.brandsub{font-size:var(--fs-label);color:var(--muted);margin-top:3px}
+.toc{display:flex;flex-direction:column;gap:4px}
+.toc a{display:flex;align-items:center;gap:11px;min-height:50px;padding:9px 13px;
+  border-radius:var(--r-m);font-size:var(--fs-body);font-weight:600;color:var(--text-soft);
+  text-decoration:none;border:1px solid transparent;
+  transition:background .2s,color .2s,border-color .2s,transform .25s var(--ease)}
+.toc a .n{font-family:var(--serif);font-size:var(--fs-label);font-weight:700;color:var(--muted);
+  letter-spacing:.04em;min-width:20px}
+.toc a:hover{background:#fff;border-color:var(--line);color:var(--jade-deep)}
+.toc a.on{background:var(--jade);border-color:var(--jade);color:#fff;box-shadow:var(--sh)}
+.toc a.on .n{color:rgba(255,255,255,.82)}
+.sidefoot{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
+  font-size:var(--fs-note);line-height:1.75;color:var(--muted)}
+
+/* ═══ 4. 封面 ══════════════════════════════════════════ */
+.cover{position:relative;border-radius:var(--r-l);overflow:hidden;min-height:360px;
+  display:flex;align-items:flex-end;
+  background:linear-gradient(150deg,#1b2a21,#33513f 62%,#5b7a63);box-shadow:var(--sh-lift)}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;
+  transition:transform .8s var(--ease)}
+.cover .veil{position:absolute;inset:0;
+  background:linear-gradient(105deg,rgba(12,20,16,.86) 0%,rgba(12,20,16,.52) 46%,rgba(12,20,16,.14) 100%),
+             linear-gradient(0deg,rgba(12,20,16,.55) 0%,transparent 46%)}
+.cover .txt{position:relative;z-index:2;padding:40px 36px}
+.cover h1{font-family:var(--serif);font-size:var(--fs-cap);font-weight:800;
+  color:#fff;letter-spacing:.02em;text-shadow:0 3px 24px rgba(0,0,0,.34)}
+.cover .sub{margin-top:14px;font-size:var(--fs-lead);color:rgba(255,255,255,.92)}
+.cover .note{position:absolute;right:18px;bottom:14px;z-index:2;font-size:var(--fs-label);color:rgba(255,255,255,.66)}
+
+/* ═══ 5. 章节：大留白 + 描边白块（块状分区的骨架） ═══════ */
+section{scroll-margin-top:24px;margin-top:56px;padding:34px 30px 38px;
+  background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);box-shadow:var(--sh)}
+section.alt{background:var(--paper-alt)}
+h2.sec{display:flex;align-items:center;gap:13px;
+  font-family:var(--serif);font-size:var(--fs-sec);font-weight:800;
+  padding-bottom:14px;margin-bottom:26px;border-bottom:2px solid var(--ink)}
+h2.sec .idx{flex:none;font-family:var(--sans);font-size:var(--fs-label);font-weight:800;color:#fff;
+  background:var(--ink);padding:6px 12px;border-radius:var(--r-s);letter-spacing:.06em}
+
+h3.sub{display:flex;align-items:center;gap:10px;font-size:var(--fs-sub);font-weight:700;color:var(--ink);
+  margin:34px 0 14px;padding-left:13px;border-left:4px solid var(--gold)}
+
+/* ═══ 6. 块：普通 / 事实 / 提示 ═════════════════════════ */
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r-m);
+  padding:20px 22px;box-shadow:var(--sh)}
+.card p{font-size:var(--fs-body);color:var(--text-soft)}
+.card-h{font-weight:800;font-size:var(--fs-lead);color:var(--ink)}
+.grid{display:grid;gap:18px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:repeat(3,1fr)}
+
+/* 口诀标题（行程全貌「游玩要点」专用）—— 衬线 + 字距，读起来像对句 */
+.jingle{margin-top:6px;font-family:var(--serif);font-size:var(--fs-lead);font-weight:800;
+  color:var(--ink);letter-spacing:.06em}
+
+/* 分行罗列（必带清单 / 分人群建议）—— 一项一行，不靠句子断行 */
+.bring{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.bring li{position:relative;padding-left:16px;font-size:var(--fs-body);color:var(--text-soft)}
+.bring li::before{content:"";position:absolute;left:0;top:.78em;width:6px;height:6px;
+  border-radius:2px;background:var(--gold)}
+.bring li b{color:var(--ink);font-weight:700;margin-right:7px}
+
+/* 提醒行：给读者的行动提示（不是核实状态）—— 浅赭金底 + 3px 竖条 */
+.say{margin-top:12px;padding:12px 16px;border-radius:var(--r-m);background:var(--gold-soft);
+  border-left:3px solid var(--gold);font-size:var(--fs-body);color:var(--text);line-height:1.7}
+.say b{font-weight:800;color:#7d5a12;margin-right:7px}
+
+.factrow{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.fact{background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r-m);padding:15px 16px;box-shadow:var(--sh);
+  transition:transform .25s var(--ease),box-shadow .25s var(--ease),border-color .25s var(--ease)}
+.fact .lb{display:flex;align-items:center;gap:7px;font-size:var(--fs-label);font-weight:700;color:var(--text-soft)}
+.fact .lb::before{content:"";flex:none;width:9px;height:9px;border-radius:3px;background:var(--gold)}
+.fact .vl{margin-top:7px;font-size:var(--fs-lead);font-weight:700;color:var(--ink);line-height:1.45}
+.fact .vl small{display:block;font-size:var(--fs-label);font-weight:400;color:var(--muted);margin-top:4px}
+
+/* ═══ 7. 景点卡：AI 实景图在上（SVG 只作降级档） ═════════ */
+/* ── 三组同级，**两列网格**；卡外下方并排两个小红书标签 ── */
+.spotgrid{align-items:start}
+.spotcell{display:flex;flex-direction:column;gap:10px;min-width:0}
+.spot{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);
+  box-shadow:var(--sh);overflow:hidden;
+  transition:transform .25s var(--ease),box-shadow .25s var(--ease)}
+.spot-media{position:relative;height:212px;overflow:hidden;
+  background:linear-gradient(160deg,#e4efe8,#cfe2d6);border-bottom:1px solid var(--line)}
+.spot-media img{width:100%;height:100%;object-fit:cover;transition:transform .6s var(--ease)}
+.spot-media svg{width:100%;height:100%;display:block}
+.spot-body{padding:18px 22px 20px}
+/* ── 景点卡的标签体系：三形态 · 固定槽位 · 固定信息量 ────────────
+   ① 主张标签 .spot-tag —— 全卡唯一压在实景图上的一枚，固定两段「费用 · 定性」
+   ② 倾向徽标 .stance   —— 只承载一个判定词，不带任何附加图形
+   ③ 事实芯片 .chip     —— 字段名 + 值，同一字号靠字重区分，不加彩色
+   ④ 核验行 .vf         —— 纯文字行；**只出现"已核验"一种**，"未核实"不上页面
+   ★ 颜色预算：一张卡上有颜色的元素 ≤2 处（图上标签的赭金重点 + 倾向徽标）。
+     其余一律中性（墨 / 灰 / 暖纸）。给六处颜色 = 装饰，给两处才有指向性。
+   ★★ 卡片内容上限（保证同排两张卡高度接近，不出现"一长一短"）：
+     一句话总结 .why ≤26 字（1 行）｜小提示 .spot-tip：必去 ≤40 字（2 行）、值得/可选 ≤20 字（1 行）
+     ｜事实芯片：必去 ≤4 条、值得 ≤3 条、可选 ≤2 条 → 必去与值得的正文行数差 ≤3 行 */
+.spot-h{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.spot-h .nm{font-family:var(--serif);font-size:var(--fs-title);font-weight:800;color:var(--ink)}
+
+/* ① 主张标签：压在图上，深底白字 + 一枚赭金点；信息量固定为「费用 · 定性」两段 */
+.spot-tag{position:absolute;left:14px;bottom:14px;z-index:2;display:inline-flex;align-items:baseline;gap:10px;padding:8px 18px 8px 16px;border-radius:var(--r-pill);background:rgba(16,26,20,.78);backdrop-filter:blur(6px)}
+.spot-tag .hl{font-family:var(--serif);font-size:var(--fs-lead);font-weight:800;color:#e8c88f;letter-spacing:.02em}
+  .spot-tag .tx{font-size:var(--fs-label);font-weight:500;color:rgba(255,255,255,.84);letter-spacing:.10em}
+
+/* ② 倾向徽标：一个词，不加图形 */
+.stance{display:inline-flex;align-items:center;flex:none;font-size:var(--fs-label);font-weight:700;
+  padding:6px 14px;border-radius:var(--r-pill);border:1px solid transparent}
+.s-must{color:#fff;background:var(--jade);border-color:var(--jade)}
+.s-worth{color:var(--jade-deep);background:var(--jade-soft);border-color:var(--jade)}
+.s-opt{color:#7d5a12;background:var(--gold-soft);border-color:var(--gold)}
+.s-skip{color:var(--muted);background:var(--paper);border-color:var(--line)}
+
+/* 卡的结论行：它就是「值得去的理由」（无字段名、无底色），赭金竖条 + 加粗锚定 */
+.why{margin-top:13px;font-size:var(--fs-lead);font-weight:700;color:var(--ink);
+  padding:2px 0 2px 14px;border-left:3px solid var(--gold)}
+
+/* 小提示（原「避坑」）：块状强度之二 · 浅赭金底 + 左侧 3px 竖条 · 卡底一行 */
+.spot-tip{margin-top:14px;padding:11px 15px;border-radius:var(--r-m);background:var(--gold-soft);border-left:3px solid var(--gold);font-size:var(--fs-body);color:var(--text);line-height:1.7}
+  .spot-tip b{font-weight:800;color:#7d5a12;margin-right:7px}
+
+/* ③ 事实芯片：字段名（灰 600）+ 值（墨 800）—— 同一字号，不加彩色，不加第二字号 */
+.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
+.chip{display:inline-flex;align-items:baseline;gap:7px;font-size:var(--fs-note);
+  background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:6px 14px;
+  transition:transform .25s var(--ease),background .25s var(--ease),border-color .25s var(--ease)}
+.chip .k{font-weight:600;color:var(--muted)}
+.chip .v{font-weight:800;color:var(--ink)}
+
+/* ④ 核实行：纯文字，无底无边（页脚信息不是标签） */
+.vf{display:inline-flex;align-items:center;gap:6px;font-size:var(--fs-label);font-weight:600}
+.vf.ok{color:#3d6b55}
+
+/* 小红书标签：卡**外**、下方，两个并排（grid 两列 → 不会出格） */
+.xhsrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.xhs{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-width:0;white-space:nowrap;
+  min-height:44px;padding:9px 14px;border-radius:var(--r-pill);
+  font-size:var(--fs-note);font-weight:700;text-decoration:none;
+  color:#d81f3c;background:#fff;border:1px solid rgba(255,36,66,.42);
+  transition:background .2s,border-color .2s,transform .25s var(--ease),box-shadow .25s var(--ease)}
+.xhs::before{content:"";flex:none;width:9px;height:9px;border-radius:3px;background:var(--xhs)}
+.xhs:hover{background:#fff1f3;border-color:var(--xhs);color:#b8162e}
+
+/* ═══ 8. 每日行程 ═══════════════════════════════════════ */
+.day{background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);
+  overflow:hidden;margin-bottom:22px;box-shadow:var(--sh)}
+.day-h{display:flex;align-items:center;gap:16px;padding:16px 22px;
+  background:linear-gradient(115deg,var(--ink) 0%,var(--ink-2) 68%,#3a5a46 100%);color:#fff}
+.dn{font-family:var(--serif);font-size:var(--fs-sub);font-weight:800;color:#e6c88a;line-height:1;flex:none}
+.dt{font-family:var(--serif);font-size:var(--fs-title);font-weight:700}
+.dd{margin-left:auto;font-size:var(--fs-label);color:rgba(255,255,255,.8)}
+.day-b{padding:18px 22px 20px}
+.whyline{font-size:var(--fs-body);color:var(--text-soft);padding:13px 16px;border-radius:var(--r-m);
+  background:var(--jade-soft);border-left:4px solid var(--jade);margin-bottom:16px}
+.whyline b{color:var(--jade-deep)}
+/* 行程总览的「安排思路」：**分行**列理由（2–3 行、合计 ≤120 字），不用整段文字块 */
+.reasons{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:7px}
+.reasons li{position:relative;padding-left:15px;font-size:var(--fs-body);color:var(--text-soft)}
+.reasons li::before{content:"";position:absolute;left:0;top:.6em;width:5px;height:5px;
+  border-radius:50%;background:var(--gold)}
+.rte{display:flex;flex-direction:column}
+.rte li{display:flex;gap:13px;padding:12px 0;border-bottom:1px dashed var(--line-hair);font-size:var(--fs-body)}
+.rte li:last-child{border-bottom:0}
+.rte .tm{flex:none;min-width:62px;font-size:var(--fs-note);font-weight:800;color:var(--jade-deep)}
+.rte .w{font-weight:700;color:var(--ink)}
+.rte .d{color:var(--text-soft)}
+.tail{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:18px;
+  padding-top:16px;border-top:2px solid var(--line)}
+.ti{font-size:var(--fs-note);color:var(--text-soft)}
+.ti .tl{display:flex;align-items:center;gap:7px;font-size:var(--fs-label);font-weight:800;
+  color:var(--muted);margin-bottom:5px}
+.ti .tl::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--gold);flex:none}
+
+/* ═══ 8.5 内嵌路线图（L3 · 每天一张 · 需自备 WebService Key） ═══
+   ⚠️ 这是页面里**唯一**的地图形态：一张 base64 静态图，不跳转、不联网也能看。
+   ⚠️ 没有 Key 就**整块删掉**，不留空占位、不写"此处应有地图"。
+   ⚠️ 命名必须诚实：真实路径 → 「真实道路走向（点位与顺序示意，非导航级）」。 */
+.routewrap{margin-top:16px;padding:15px 16px;border-radius:var(--r-l);background:var(--card);
+  border:1px solid var(--line);box-shadow:var(--sh)}
+.routewrap .rh{display:flex;align-items:center;gap:8px;font-size:var(--fs-note);font-weight:700;
+  color:var(--text-soft);margin-bottom:12px}
+.routewrap .rh::before{content:"";flex:none;width:9px;height:9px;border-radius:3px;background:var(--jade)}
+.routewrap img{display:block;width:100%;height:auto;border-radius:var(--r-m)}
+.routewrap .rfoot{margin-top:10px;font-size:var(--fs-label);color:var(--muted)}
+
+/* ═══ 9. 必读指南：两栏瀑布流 + 每组一张分类图 ═══════════ */
+/* ── 用 columns（masonry）：两组各自顶到上方，不强求左右等高 ── */
+  .pfwrap{columns:2;column-gap:20px}
+  .pfgroup{display:inline-block;width:100%;margin-bottom:20px;break-inside:avoid;
+    background:var(--card);border:1px solid var(--line);border-radius:var(--r-l);
+    overflow:hidden;box-shadow:var(--sh)}
+  .pfwrap>:last-child{margin-bottom:0}
+  .pfhead{position:relative;height:130px;overflow:hidden;background:var(--paper-alt)}
+  .pfhead img{width:100%;height:100%;object-fit:cover;display:block}
+  .pfhead::after{content:"";position:absolute;inset:0;pointer-events:none;
+    background:linear-gradient(180deg,rgba(255,255,255,0) 0%,rgba(255,255,255,.30) 50%,
+      rgba(255,255,255,.90) 84%,#fff 100%)}
+  .pfhead .pftitle{position:absolute;left:18px;right:18px;bottom:7px;z-index:2;
+    display:flex;align-items:center;gap:9px;font-size:var(--fs-sub);font-weight:800;color:var(--ink)}
+  .pfhead .pftitle .cnt{font-size:var(--fs-label);font-weight:600;color:var(--muted);margin-left:auto}
+  .gbar{flex:none;width:9px;height:9px;border-radius:3px;background:var(--gc,var(--jade))}
+  .pfbody{padding:2px 20px 10px}
+.pflist{margin-top:16px}
+.pfi{padding:15px 0;border-bottom:1px dashed var(--line-hair)}
+.pfi:last-child{border-bottom:0}
+.pfi .ph{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.pfi .pt{font-size:var(--fs-lead);font-weight:700;color:var(--ink);line-height:1.5}
+/* 严重度 = 标题前**一个 8px 点**，**不用文字徽标**（药丸已废 · Q42 用户判定"观感不好"）。
+   hard「必读」暗红 / soft「提示」暗黄。判据：**会影响成行 → hard；怎么做更好 → soft**。
+   ★ 点放在标题前，不抢标题注意力；也不用实心红铺底（Q39 用户判定"会盖过条目标题"）。 */
+.pfi.hard .ph::before,.pfi.soft .ph::before{content:"";flex:none;width:8px;height:8px;
+  border-radius:50%;margin-top:9px}
+.pfi.hard .ph::before{background:var(--alert)}
+.pfi.soft .ph::before{background:var(--gold)}
+.pfi .pd{margin-top:8px;font-size:var(--fs-body);color:var(--text-soft)}
+.pfi .pm{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-top:10px}
+.pfi .aff{font-size:var(--fs-label);color:var(--muted)}
+.pfi .aff b{color:var(--text-soft)}
+
+details.more{margin:0 20px 16px;border:1px solid var(--line);border-radius:var(--r-m);background:var(--paper-alt);padding:12px 16px}
+details.more>summary{cursor:pointer;font-size:var(--fs-note);font-weight:700;color:var(--text-soft);
+  min-height:34px;display:flex;align-items:center;gap:8px;list-style:none}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--gold);flex:none}
+details.more[open]>summary{margin-bottom:6px}
+
+/* ═══ 10. 行程全貌（脑图 + 游玩要点；**没有地图**） ═══════ */
+.mindwrap{margin-top:8px;padding:16px;border-radius:var(--r-l);background:var(--paper-alt);
+  border:1px solid var(--line);overflow-x:auto;transition:border-color .25s var(--ease)}
+.mindwrap svg{display:block;width:100%;min-width:520px;height:auto}
+.mind .mn-t{font:800 var(--fs-note) var(--sans)}
+.mind .mn-s{font:700 var(--fs-mini) var(--sans)}
+.mind .mn-b{font:400 var(--fs-mini) var(--sans)}
+
+/* ═══ 11. 表格 ══════════════════════════════════════════ */
+table{width:100%;border-collapse:collapse}
+th{background:var(--ink);color:#fff;font-size:var(--fs-label);font-weight:600;letter-spacing:.04em;
+  padding:12px 13px;text-align:left}
+td{padding:12px 13px;border-bottom:1px solid var(--line-hair);font-size:var(--fs-note);
+  color:var(--text-soft);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even) td{background:var(--paper-alt)}
+td.k{font-weight:700;color:var(--ink)}
+
+/* ═══ 12. 底部可信度 ════════════════════════════════════ */
+.foot{margin-top:36px;padding:24px 26px;border-radius:var(--r-l);background:var(--ink);
+  color:rgba(255,255,255,.8);font-size:var(--fs-note);line-height:1.85}
+.foot b{color:#fff}
+.foot .vf{padding:4px 12px;border-radius:var(--r-pill);border:1px solid}
+.foot .vf.ok{color:#bfe3cf;background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.24)}
+.foot .stamp{margin-top:14px;font-size:var(--fs-label);color:rgba(255,255,255,.55)}
+
+/* ═══ 13. 悬浮反馈（鼠标移上去的浮动感 · 只给桌面端） ═════
+   ⚠️ 必须包在 (hover:hover) 里 —— 触屏设备上裸 hover 会「粘住」不消失 */
+@media (hover:hover){
+  /* 浮动反馈只给「有明确交互」的元素 —— 位移=在视觉上承诺"这里能点"。
+     纯内容容器（card / day / pfgroup / chip / **景点卡 spot**)不给位移，避免假可供性。
+     例外：行程总览头一行的事实卡（摘要条），允许轻微浮起。 */
+  .fact:hover{transform:translateY(-2px);border-color:var(--jade);box-shadow:var(--sh-hover)}
+  .toc a:hover{transform:translateX(3px)}
+  /* ★ 景点卡**本体不位移**：小红书两个标签已移到卡外，卡内没有任何可点元素 ——
+     卡整张浮起来就是在承诺"点我"，属**假可供性**（P22）。只给图一个轻微放大。 */
+  .spotcell:hover .spot-media img{transform:scale(1.05)}
+  .xhs:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(255,36,66,.22)}
+  .mindwrap:hover{border-color:var(--jade)}
+}
+
+/* ═══ 14. 响应式 ════════════════════════════════════════ */
+@media (max-width:1000px){
+  .pfwrap{columns:1}
+  .app{flex-direction:column;gap:0}
+  .sidebar{position:sticky;top:0;z-index:20;width:100%;max-height:none;padding:10px 0;
+    background:rgba(242,239,231,.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+  .brandmark{border-bottom:0;padding:2px 4px 4px;margin:0 0 3px;align-items:center}
+  .brandsub{display:inline;margin-left:8px;font-size:var(--fs-mini);opacity:.72}
+  .brandname{font-size:var(--fs-label);line-height:1.25}
+  .sidefoot{display:none}
+  .toc{flex-direction:row;overflow-x:auto;gap:8px;scrollbar-width:none;padding-bottom:4px}
+  .toc::-webkit-scrollbar{display:none}
+  .toc a{min-height:0;padding:6px 12px;border:1px solid var(--line);background:var(--card);flex:none;white-space:nowrap;font-size:var(--fs-note)}
+  .toc a:hover{transform:none}
+  .content{padding:16px 0 56px;width:100%}
+  .factrow{grid-template-columns:1fr 1fr}
+  .g2,.g3,.spotgrid{grid-template-columns:1fr}
+  .tail{grid-template-columns:1fr 1fr}
+}
+@media (max-width:620px){
+  .app{padding:0 16px}
+  section{margin-top:34px;padding:24px 18px 26px}
+  .cover{border-radius:var(--r-m);min-height:300px}
+  .cover .txt{padding:26px 20px}
+  .factrow,.tail{grid-template-columns:1fr}
+  .spot-media{height:178px}
+  .spot-body{padding:16px 16px 18px}
+  .day-h{flex-wrap:wrap;gap:10px}
+  .dd{margin-left:0;width:100%}
+  .mindwrap svg{min-width:460px}
+  .rte .tm{min-width:54px}
+}
+@media (prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ 景点意象图（一次定义、全页 <use> 复用 · 零额外体积） ═══════════
+     5 个场景：a 峰林江面 / b 溶洞 / c 古镇 / d 田园 / e 夜市
+     改用 AI 生图时：把 .spot-media 里的 <svg> 换成 <img src="data:image/jpeg;base64,…"> -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="sc-a" viewBox="0 0 400 190" preserveAspectRatio="xMidYMid slice">
+    <rect width="400" height="190" fill="#dcebe2"/>
+    <path d="M0 138c40-46 66-70 96-70s52 22 78 22 44-34 74-34 48 40 76 40 46-26 76-26v52H0z" fill="#9dc3ad"/>
+    <path d="M0 152c46-30 76-44 108-44s50 18 80 18 48-24 78-24 46 28 74 28 40-14 60-14v36H0z" fill="#5f977a"/>
+    <path d="M0 166h400v24H0z" fill="#3f7a63"/>
+    <path d="M132 160l42-6 8 10-46 5z" fill="#1b2a21" opacity=".5"/>
+    <circle cx="300" cy="44" r="16" fill="#fff" opacity=".55"/>
+  </symbol>
+  <symbol id="sc-b" viewBox="0 0 400 190" preserveAspectRatio="xMidYMid slice">
+    <rect width="400" height="190" fill="#e7e0ef"/>
+    <path d="M0 0h400v54c-30 22-56 6-88 22s-58 30-92 14-56-28-90-16-70 20-130-4z" fill="#c4b3dd"/>
+    <path d="M0 190v-58c34-20 62-6 96-22s60-28 94-12 54 30 88 18 72-20 122 2v72z" fill="#9d89c0"/>
+    <ellipse cx="200" cy="150" rx="120" ry="26" fill="#6f5c96" opacity=".45"/>
+    <circle cx="86" cy="72" r="7" fill="#fff" opacity=".7"/><circle cx="322" cy="60" r="5" fill="#fff" opacity=".6"/>
+    <circle cx="268" cy="96" r="4" fill="#fff" opacity=".5"/><circle cx="140" cy="112" r="4" fill="#fff" opacity=".45"/>
+  </symbol>
+  <symbol id="sc-c" viewBox="0 0 400 190" preserveAspectRatio="xMidYMid slice">
+    <rect width="400" height="190" fill="#f0e8db"/>
+    <path d="M0 118l52-34 52 34v72H0z" fill="#b8895e"/>
+    <path d="M40 84c8-16 24-16 32 0z" fill="#7d5233"/>
+    <path d="M112 104l58-40 58 40v86h-116z" fill="#a8784e"/>
+    <path d="M156 64c10-18 28-18 38 0z" fill="#7d5233"/>
+    <path d="M242 124l48-30 48 30v66h-96z" fill="#c09569"/>
+    <path d="M278 94c8-14 22-14 30 0z" fill="#7d5233"/>
+    <path d="M0 168h400v22H0z" fill="#6f5236"/>
+    <rect x="146" y="120" width="48" height="82" fill="#2b1f16" opacity=".4"/>
+  </symbol>
+  <symbol id="sc-d" viewBox="0 0 400 190" preserveAspectRatio="xMidYMid slice">
+    <rect width="400" height="190" fill="#eef3dc"/>
+    <path d="M0 106c34-30 58-44 86-44s44 14 70 14 42-22 70-22 44 24 70 24 60-20 104-20v52H0z" fill="#a8c47e"/>
+    <path d="M0 128h400v62H0z" fill="#cdd9a4"/>
+    <path d="M0 140h400M0 154h400M0 168h400" stroke="#b3c184" stroke-width="5"/>
+    <path d="M52 140v38M140 140v38M228 140v38M316 140v38" stroke="#8fae5f" stroke-width="6"/>
+    <path d="M0 92c30-24 52-36 78-36s40 12 64 12 38-20 64-20 40 22 64 22 56-18 130-18" fill="none" stroke="#6f9455" stroke-width="5"/>
+  </symbol>
+  <symbol id="sc-e" viewBox="0 0 400 190" preserveAspectRatio="xMidYMid slice">
+    <rect width="400" height="190" fill="#1e2a36"/>
+    <path d="M0 130l54-40 52 40v60H0z" fill="#2d3e50"/>
+    <path d="M118 122l58-44 58 44v68h-116z" fill="#35495e"/>
+    <path d="M246 134l46-32 46 32v56h-92z" fill="#2d3e50"/>
+    <path d="M0 168h400v22H0z" fill="#16202a"/>
+    <circle cx="30" cy="42" r="5" fill="#d9a544" opacity=".95"/><circle cx="72" cy="42" r="5" fill="#d9a544" opacity=".95"/>
+    <circle cx="114" cy="42" r="5" fill="#d9a544" opacity=".95"/><circle cx="156" cy="42" r="5" fill="#d9a544" opacity=".95"/>
+    <circle cx="198" cy="42" r="5" fill="#d9a544" opacity=".95"/><circle cx="240" cy="42" r="5" fill="#d9a544" opacity=".95"/>
+    <circle cx="282" cy="42" r="5" fill="#d9a544" opacity=".95"/><circle cx="324" cy="42" r="5" fill="#d9a544" opacity=".95"/>
+    <circle cx="366" cy="42" r="5" fill="#d9a544" opacity=".95"/>
+    <path d="M150 158h34v10h-34z" fill="#d9a544" opacity=".8"/>
+    <path d="M272 160h30v8h-30z" fill="#d9a544" opacity=".8"/>
+  </symbol>
+</defs></svg>
+
+<div class="app">
+
+  <!-- ═══════════ 左侧目录（固定 5 项，名称不要改） ═══════════ -->
+  <aside class="sidebar">
+    <div class="brandmark">
+      <span class="branddot"></span>
+      <span>
+        <span class="brandname">{城市} · {一句话主题}</span>
+        <div class="brandsub">{N} 天 {M} 晚 · {人数} 人</div>
+      </span>
+    </div>
+    <ul class="toc" id="toc">
+      <li><a href="#overview"><span class="n">01</span>行程总览</a></li>
+      <li><a href="#spots"><span class="n">02</span>景点</a></li>
+      <li><a href="#daily"><span class="n">03</span>每日行程</a></li>
+      <li><a href="#pitfalls"><span class="n">04</span>必读指南</a></li>
+      <li><a href="#mindmap"><span class="n">05</span>行程全貌</a></li>
+    </ul>
+    <div class="sidefoot">
+      这份攻略只服务于这一次出行。<br>
+      没标 ✅ 的是推断，出发前请再确认一次。
+    </div>
+  </aside>
+
+  <main class="content">
+
+  <!-- ═══════════ 封面（页首，不是目录项） ═══════════════
+       图片必须 base64 内联；生成失败则删掉 <img> 让 CSS 渐变兜底 -->
+  <header class="cover">
+    <img src="__COVER_B64__" alt="">
+    <div class="veil"></div>
+    <div class="txt">
+      <h1>{城市} · {主题}</h1>
+      <div class="sub">{N} 天 {M} 晚 ｜ {起止日期} ｜ {人数} 人（{结构}）</div>
+    </div>
+    <div class="note">封面图 AI 生成 · 攻略生成于 {YYYY-MM-DD}</div>
+  </header>
+
+  <!-- ═══════════ ① 行程总览 ═══════════
+       五个事实卡：目的地 / 行程天数 / 同行人数 / 交通方式 / 预算
+       ⚠️ 标签必须用书面语，不要写成"去哪/几天/几人/怎么走" -->
+  <section id="overview">
+    <h2 class="sec"><span class="idx">01</span>行程总览</h2>
+
+    <div class="factrow">
+      <div class="fact"><div class="lb">目的地</div><div class="vl">{城市 · 区域 · 区域}</div></div>
+      <div class="fact"><div class="lb">行程天数</div><div class="vl">{N} 天 {M} 晚 <small>{起止}</small></div></div>
+      <div class="fact"><div class="lb">同行人数</div><div class="vl">{人数} 人 <small>{结构}</small></div></div>
+      <div class="fact"><div class="lb">交通方式</div><div class="vl">{进出方式} <small>{当地交通}</small></div></div>
+      <div class="fact"><div class="lb">预算</div><div class="vl">{区间} <small>{口径}</small></div></div>
+    </div>
+
+    <h3 class="sub">安排思路</h3>
+    <!-- 分行列理由：2–3 行、每行 ≤40 字、合计 ≤120 字。**不写整段话**。
+         只讲"为什么这么排"（防堵 / 海拔适应 / 补能 / 不走回头路），不重复行程本身 -->
+    <div class="card"><ul class="reasons">
+      <li>{理由 1 —— ≤40 字}</li>
+      <li>{理由 2 —— ≤40 字}</li>
+    </ul></div>
+
+    <h3 class="sub">预算构成</h3>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr><th>项目</th><th>口径</th><th>估算</th><th>备注</th></tr></thead>
+        <tbody>
+          <tr><td class="k">{项目}</td><td>{人均/总价}</td><td>{金额}</td><td>{备注}</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- ⚠️ 这里要的是「提醒」（给读者的行动提示），**不是**「未核实」（核验状态）。
+         状态是声明"这条事实核过没有"，提醒是"你该怎么做"——两者不得混用。 -->
+    <div class="say"><b>提醒</b>{说清哪些是估算、以什么为准、怎么省钱}</div>
+
+    <h3 class="sub">出发前必须做的事</h3>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead><tr><th>事项</th><th>什么时候做</th><th>在哪做</th></tr></thead>
+        <tbody>
+          <tr><td class="k">{事项}</td><td>{时间}</td><td>{渠道 —— 写大众认识的名字，不写行业缩写}</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 class="sub">天气与行李</h3>
+    <div class="grid g3">
+      <!-- 天气：**恰好三行** —— 白天 / 夜间 / 天气总结（Q40 用户裁定）
+           ⚠️ 标题是「天气」，不是「气温」
+           ⚠️ 第 3 行是**天气总结**（只给晴雨与体感结论，不给温度）
+           ⚠️ **不许再加第 4 行小字**（如「常年同期参考，不是预报」）——
+              那是「提醒」的角色，位置不对，且用户已判「多了」 -->
+      <div class="card"><div class="card-h">天气</div>
+        <ul class="bring">
+          <li><b>白天</b>{最低}–{最高}℃</li>
+          <li><b>夜间</b>{最低}–{最高}℃</li>
+          <li><b>天气总结</b>{晴雨与体感 —— 一句话，不给温度}</li>
+        </ul>
+      </div>
+      <!-- 必带：一项一行，不靠句子断行 -->
+      <div class="card"><div class="card-h">必带</div>
+        <ul class="bring">
+          <li>{物品 —— 一句说清为什么}</li>
+          <li>{物品}</li>
+          <li>{物品}</li>
+        </ul>
+      </div>
+      <!-- 分人群建议：一人群一行，行文求短 -->
+      <div class="card"><div class="card-h">分人群建议</div>
+        <ul class="bring">
+          <li><b>{人群}</b>{一句建议}</li>
+          <li><b>{人群}</b>{一句建议}</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ ② 景点 ═══════════
+       按倾向分组：必去 / 值得 / 可选 —— **三组都进两列网格**，视觉一致（「大卡没有卡的感觉」已修）
+       可跳：收进 details，不带图、不带小红书标签
+       ⚠️ 每张卡固定顺序：实景图(压主张标签) → 景点名 + 倾向徽标 → 一句话（**不带字段名**）
+                          → 小提示 → 事实芯片 → 核实行
+       ★ Q40：「一句话总结」是**内部字段名，不上卡面** —— 卡上就是那不带头尾的一句话，
+         地位与倾向徽标同级（同属「一眼判断区」）。
+       ★ 小红书两个标签在**卡外下方**并排（小红书·游玩攻略 / 小红书·拍照参考），不在卡内
+       ★ Q40：文案 = 景点名 + 游玩攻略 / 拍照参考；**「小白出片」这类词是我们的制作思路，不上页面**
+       ★ 优缺点的权重不对称：主张在上（金），小提示在下（淡）
+       ★★ 内容上限见 §7 注释 —— 同排两张卡的高度差不超过 3 行 -->
+  <section id="spots" class="alt">
+    <h2 class="sec"><span class="idx">02</span>景点</h2>
+
+    <h3 class="sub">必去 · 不可替代</h3>
+    <div class="grid g2 spotgrid">
+      <div class="spotcell">
+        <div class="spot">
+          <div class="spot-media">
+            <img src="data:image/jpeg;base64,{BASE64_JINGDIANTU}" alt="{JINGDIANMING}">
+            <!-- ① 主张标签（无图标：金色衬线大字=费用 · 浅色小字=定性），总量 ≤16 字
+                 示例：免费 · 城市名片 / 约 255 元/人 · 山水精华 -->
+            <span class="spot-tag"><span class="hl">{费用}</span><span class="tx">{定性}</span></span>
+          </div>
+          <div class="spot-body">
+            <div class="spot-h"><span class="nm">{景点名}</span><span class="stance s-must">必去</span></div>
+            <div class="why">{卡上那句话本身 —— ≤26 字；卡面**不出现字段名**}</div>
+            <div class="spot-tip"><b>小提示</b>{≤40 字：什么情况下会失望 / 要提前做什么}</div>
+            <div class="chips">
+              <span class="chip"><span class="k">{字段名}</span><span class="v">{值}</span></span>
+              <span class="chip"><span class="k">{字段名}</span><span class="v">{值}</span></span>
+              <span class="chip"><span class="k">{字段名}</span><span class="v">{值}</span></span>
+            </div>
+            <div style="margin-top:12px"><span class="vf ok">✅ 已核验（基于{来源大类}）</span></div>
+          </div>
+        </div>
+        <!-- 卡外下方：两个标签左右并排（grid 两列，不会出格） -->
+        <div class="xhsrow">
+          <a class="xhs" href="https://www.xiaohongshu.com/search_result?keyword={URL编码的「景点名 游玩攻略」}" target="_blank" rel="noopener">小红书·游玩攻略</a>
+          <a class="xhs" href="https://www.xiaohongshu.com/search_result?keyword={URL编码的「景点名 拍照参考」}" target="_blank" rel="noopener">小红书·拍照参考</a>
+        </div>
+      </div>
+      <!-- 第二张同构 -->
+    </div>
+
+    <h3 class="sub">值得 · 有明确收获</h3>
+    <div class="grid g2 spotgrid">
+      <div class="spotcell">
+        <div class="spot">
+          <div class="spot-media">
+            <img src="data:image/jpeg;base64,{BASE64_JINGDIANTU}" alt="{JINGDIANMING}">
+            <span class="spot-tag"><span class="hl">{费用}</span><span class="tx">{定性}</span></span>
+          </div>
+          <div class="spot-body">
+            <div class="spot-h"><span class="nm">{景点名}</span><span class="stance s-worth">值得</span></div>
+            <div class="why">{一句话，≤26 字}</div>
+            <div class="spot-tip"><b>小提示</b>{≤20 字}</div>
+            <div class="chips"><span class="chip"><span class="k">{字段名}</span><span class="v">{值}</span></span></div>
+            <div style="margin-top:12px"><span class="vf ok">✅ 已核验（基于{来源大类}）</span></div>
+          </div>
+        </div>
+        <div class="xhsrow">
+          <a class="xhs" href="{...}" target="_blank" rel="noopener">小红书·游玩攻略</a>
+          <a class="xhs" href="{...}" target="_blank" rel="noopener">小红书·拍照参考</a>
+        </div>
+      </div>
+    </div>
+
+    <h3 class="sub">可选 · 非必需</h3>
+    <div class="grid g2 spotgrid">
+      <div class="spotcell">
+        <div class="spot">
+          <div class="spot-media">
+            <img src="data:image/jpeg;base64,{BASE64_JINGDIANTU}" alt="{JINGDIANMING}">
+            <span class="spot-tag"><span class="hl">{费用}</span><span class="tx">{定性}</span></span>
+          </div>
+          <div class="spot-body">
+            <div class="spot-h"><span class="nm">{景点名}</span><span class="stance s-opt">可选</span></div>
+            <div class="why">{一句话，≤26 字}</div>
+            <div class="spot-tip"><b>小提示</b>{≤20 字}</div>
+            <div class="chips"><span class="chip"><span class="k">{字段名}</span><span class="v">{值}</span></span></div>
+          </div>
+        </div>
+        <div class="xhsrow">
+          <a class="xhs" href="{...}" target="_blank" rel="noopener">小红书·游玩攻略</a>
+          <a class="xhs" href="{...}" target="_blank" rel="noopener">小红书·拍照参考</a>
+        </div>
+      </div>
+    </div>
+
+    <details class="more" style="margin-top:24px">
+      <summary>已排除的选项 · 不去的理由</summary>
+      <div class="grid g2" style="margin-top:14px">
+        <div class="spot" style="background:var(--paper)">
+          <div class="spot-body" style="padding:16px">
+            <div class="spot-h"><span class="nm">{景点名}</span><span class="stance s-skip">可跳</span></div>
+            <div class="why" style="border-left-color:var(--muted)">{一句话}</div>
+            <div class="spot-tip"><b>小提示</b>{一句话}</div>
+          </div>
+        </div>
+      </div>
+    </details>
+  </section>
+
+  <!-- ═══════════ ③ 每日行程 ═══════════
+       动线用「时间 + 序号」表达（不依赖地图也读得懂）
+       每天：安排思路 → 时间线（含店名的餐饮节点）→ 内嵌路线图 → 住宿/餐饮/关键动作/备选方案
+       ⚠️ 餐饮节点**必须写店名（带分店名）**，不写"附近找家米粉店" —— 见 references/content-model.md §5
+       ⚠️ Q40：餐饮节点**不给门牌地址**，只给「与上一站的距离 / 关系」+ **推荐菜**（点哪些） -->
+  <section id="daily">
+    <h2 class="sec"><span class="idx">03</span>每日行程</h2>
+
+    <div class="day">
+      <div class="day-h"><span class="dn">DAY 1</span><span class="dt">{当天主题}</span><span class="dd">{日期 周几}</span></div>
+      <div class="day-b">
+        <div class="whyline"><b>安排思路：</b>{一句话，≤60 字}</div>
+        <ul class="rte">
+          <li><span class="tm">{HH:MM}</span><span class="w">{做什么}</span> <span class="d">—— {说明}</span></li>
+          <li class="food"><span class="tm">{HH:MM}</span><span class="w">{餐次 · 店名}</span> <span class="d">—— 点{推荐菜}；{一句理由} · 人均 {X} · {与上一站的距离 / 关系}</span></li>
+          <li class="rest"><span class="tm">{HH:MM}</span><span class="w">{住 / 休息}</span> <span class="d">—— {说明}</span></li>
+        </ul>
+
+        <!-- ═══ 内嵌路线图（L3 · 每天一张） ═══
+             ⚠️ 只有用户提供了腾讯地图 WebService Key 才有图；**没有就整块删掉**
+                （不留空占位、不写"此处应有地图"）。
+             ⚠️ 这是页面里唯一的地图形态 —— 不跳外链、不嵌 iframe。
+             ⚠️ 取图：scripts/make_route_map.py --split-days，见 references/map-capability.md §4.4
+             ⚠️ **标题只写「今日动线」四个字**（Q40 用户裁定）——
+                **不许用文案复述图里画了什么**（「当天 3 个点：A → B → C + 真实道路走向」这类话
+                是元说明，图自明；见 writing-style.md §6 黑名单）。
+             ⚠️ 诚实命名**下沉到 .rfoot**（图下小字、灰、不抢视线）：
+                喂了真实路径点 → 「依真实导航路径绘制，非导航级」；只连直线 → 「点位与顺序示意」。 -->
+        <div class="routewrap">
+          <div class="rh">今日动线</div>
+          <img src="data:image/jpeg;base64,{BASE64_DANGTIAN_LUXIANTU}" alt="{当天}动线图">
+          <div class="rfoot">地图：腾讯位置服务静态图 · 依真实导航路径绘制，非导航级</div>
+        </div>
+
+        <div class="tail">
+          <div class="ti"><div class="tl">住宿</div>{}</div>
+          <div class="ti"><div class="tl">餐饮</div>{店名列表}<br><span class="vf ok">✅ 已核验（基于腾讯地图）</span></div>
+          <div class="ti"><div class="tl">关键动作</div>{}</div>
+          <div class="ti"><div class="tl">备选方案</div>{Plan B}</div>
+        </div>
+      </div>
+    </div>
+    <!-- Day 2…N 同构 -->
+  </section>
+
+  <!-- ═══════════ ④ 必读指南 ═══════════
+       分五组（景点/美食/住宿/交通/打卡），空组不渲染
+       · 严重度 = 标题前**一个 8px 点**（不用文字徽标）：hard（必读）暗红 / soft（提示）暗黄
+       · `hard` 直接列出；`soft` 收进该组的 details —— **details 一律默认收起，没有例外**
+       · 每条：标题 → 说明 → 核验行（"已核验（基于X）"）+ 影响范围
+       ★ 两栏用 columns（瀑布流）：右列不必等左列 —— 两组各自顶到上方 -->
+  <section id="pitfalls" class="alt">
+    <h2 class="sec"><span class="idx">04</span>必读指南</h2>
+
+    <div class="pfwrap">
+
+      <div class="pfgroup">
+        <div class="pfhead">
+          <img src="data:image/jpeg;base64,{BASE64_FENLEITU_JINGDIAN}" alt="景点">
+          <div class="pftitle"><span class="gbar" style="--gc:var(--g-spot)"></span>🏛 景点<span class="cnt">{N} 条</span></div>
+        </div>
+        <div class="pfbody">
+          <ul class="pflist">
+            <li class="pfi hard">
+              <div class="ph"><span class="pt">{标题，≤20字}</span></div>
+              <div class="pd">{补充说明 / 具体怎么做}</div>
+              <div class="pm"><span class="vf ok">✅ 已核验（基于{来源大类}）</span><span class="aff">→ 影响：<b>{景点 / Day N}</b></span></div>
+            </li>
+          </ul>
+          <details class="more">
+            <summary>提示 {N} 条 · 点击展开</summary>
+            <ul class="pflist">
+              <li class="pfi soft">
+                <div class="ph"><span class="pt">{标题}</span></div>
+                <div class="pd">{}</div>
+                <div class="pm"><span class="vf ok">✅ 已核验（基于{来源大类}）</span><span class="aff">→ 影响：<b>{}</b></span></div>
+              </li>
+            </ul>
+          </details>
+        </div>
+      </div>
+
+      <div class="pfgroup">
+        <div class="pfhead">
+          <img src="data:image/jpeg;base64,{BASE64_FENLEITU_MEISHI}" alt="美食">
+          <div class="pftitle"><span class="gbar" style="--gc:var(--g-food)"></span>🍜 美食<span class="cnt">{N} 条</span></div>
+        </div>
+        <div class="pfbody">
+          <ul class="pflist">
+            <li class="pfi hard">
+              <div class="ph"><span class="pt">{标题，≤20字}</span></div>
+              <div class="pd">{}</div>
+              <div class="pm"><span class="vf ok">✅ 已核验（基于{来源大类}）</span><span class="aff">→ 影响：<b>{}</b></span></div>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+    </div>
+    <!-- 其余三组同构：🏨 住宿（--g-hotel）/ 🚇 交通（--g-trans）/ 📸 打卡（--g-photo），
+         依次补进两栏瀑布流，**各组独立顶到上方**（masonry，不等高）。
+         每组顶部一张分类实景图 —— 生成规范见 references/spot-images.md「分类图」一节。 -->
+  </section>
+
+  <!-- ═══════════ ⑤ 行程全貌 ═══════════
+       ★ 只有一张 SVG 脑图 + 游玩要点（口诀卡）—— **这里没有地图**，
+         地图在「③ 每日行程」里，按天各一张（Q39 用户纠正）。 -->
+  <section id="mindmap">
+    <h2 class="sec"><span class="idx">05</span>行程全貌</h2>
+
+    <div class="mindwrap">
+      <svg class="mind" viewBox="0 0 680 400" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="{城市}行程全貌图">
+        <rect x="266" y="188" width="148" height="60" rx="16" fill="#2f7d5c"/>
+        <text class="mn-t" x="340" y="214" text-anchor="middle" fill="#fff">{城市} · {N}天{M}晚</text>
+        <text class="mn-b" x="340" y="233" text-anchor="middle" fill="#cfe6d9">{日期} · {人数} 人</text>
+        <!-- 四个角 + 下方各一个 Day 卡，连线用 <line stroke="#b6c4ba"> -->
+      </svg>
+    </div>
+
+    <!-- 游玩要点：**口诀化**（6–12 字、两顿对称），不是把段落缩短。
+         口诀做标题，下面一句说明（≤60 字）。规则见 references/writing-style.md §7 -->
+    <h3 class="sub">{城市}游玩要点</h3>
+    <div class="grid g2">
+      <div class="card">
+        <div class="jingle">{口诀 —— 6–12 字，两顿对称，好记优先}</div>
+        <p style="margin-top:8px">{说明 ≤60 字，1–2 句}</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════ 底部：可信度说明（固定文案，不要省） ═══════════ -->
+  <div class="foot">
+    <p><b>关于这份攻略的可信度</b></p>
+    <p style="margin-top:8px">
+      标 <span class="vf ok">✅ 已核验</span> 的事实（票价、开放时间、预约规则、交通管制、店名与位置），
+      <b>来源限「腾讯地图 / 官方渠道 / 公开信息」三类</b>，核于 {日期}；
+      <b>没有标记的</b>是推断或经验，出行前请再确认一次。<br>
+      票价、开放时间和管制措施都会变，<b>出发前请以官方渠道的最新公告为准</b>。<br>
+      攻略中的「倾向」与各类提示是基于公开信息的判断，不是官方事实 —— 最终怎么走，由你决定。
+    </p>
+    <p class="stamp">生成于 {日期} · 只为这一次出行制作</p>
+  </div>
+
+  </main>
+</div>
+
+<script>
+(function(){
+  var links = Array.prototype.slice.call(document.querySelectorAll('#toc a'));
+  var secs = links.map(function(a){ return document.querySelector(a.getAttribute('href')); });
+  function onScroll(){
+    var y = window.scrollY + 140, cur = 0;
+    for (var i=0;i<secs.length;i++){ if (secs[i] && secs[i].offsetTop <= y) cur = i; }
+    links.forEach(function(a,i){ a.classList.toggle('on', i===cur); });
+  }
+  window.addEventListener('scroll', onScroll, {passive:true});
+  window.addEventListener('resize', onScroll);
+  onScroll();
+})();
+</script>
+</body>
+</html>

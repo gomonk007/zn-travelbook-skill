@@ -1,0 +1,4 @@
+.workbuddy/
+scripts/route.json
+scripts/trip.json
+*.key
